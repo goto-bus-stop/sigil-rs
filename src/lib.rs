@@ -39,14 +39,15 @@ fn md5(input: &[u8]) -> [u8; 16] {
 }
 
 // The cells algorithm comes from https://github.com/tent/sigil/tree/master/gen, BSD 3-Clause
+fn should_fill(index: usize, hash: &[u8]) -> bool {
+    debug_assert_eq!(hash.len(), 15);
+    (hash[index / 8] >> (8 - ((index % 8) + 1))) & 1 == 1
+}
+
 fn cells(size: usize, hash: &[u8]) -> Vec<bool> {
     debug_assert_eq!(hash.len(), 15);
 
     let cols = (size / 2) + (size % 2);
-
-    fn should_fill(index: usize, hash: &[u8]) -> bool {
-        (hash[index / 8] >> (8 - ((index % 8) + 1))) & 1 == 1
-    }
 
     let mut cells = vec![false; size * size];
     for i in (0..cols * size).filter(|i| should_fill(*i, hash)) {
@@ -99,6 +100,10 @@ fn render(config: &Config, inverted: bool, width: u16, hash: &[u8; 16]) -> RgbIm
 }
 
 pub fn generate_identicon(config: &Config, width: u16, input: impl AsRef<[u8]>) -> RgbImage {
+    assert!(config.rows > 0);
+    assert!(config.rows < 16);
+    assert!(width % ((config.rows + 1) * 2) == 0);
+
     let hash = md5(input.as_ref());
     render(config, false, width, &hash)
 }
