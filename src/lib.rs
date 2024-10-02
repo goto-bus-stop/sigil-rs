@@ -5,6 +5,7 @@
 //! [Cupcake Sigil]: https://github.com/tent/sigil
 
 use std::fmt::Debug;
+use std::fmt::Display;
 use std::fmt::Write;
 
 use md5::Digest as _;
@@ -44,18 +45,6 @@ impl Theme {
     }
 }
 
-fn md5(input: &[u8]) -> [u8; 16] {
-    let mut hash = md5::Md5::new();
-    hash.update(input);
-    hash.finalize().into()
-}
-
-// The cells algorithm comes from https://github.com/tent/sigil/tree/master/gen, BSD 3-Clause
-fn should_fill(index: usize, hash: &[u8]) -> bool {
-    debug_assert_eq!(hash.len(), 15);
-    (hash[index / 8] >> (8 - ((index % 8) + 1))) & 1 == 1
-}
-
 /// A bit set of up to 256 cells.
 #[derive(Clone)]
 struct Cells {
@@ -64,9 +53,7 @@ struct Cells {
 impl Cells {
     /// Initialise cells to zero.
     const fn new() -> Self {
-        Self {
-            bits: [0; 32],
-        }
+        Self { bits: [0; 32] }
     }
 
     const fn capacity(&self) -> usize {
@@ -84,6 +71,30 @@ impl Cells {
         debug_assert!(index < self.capacity());
         self.bits[index / 8] |= 1 << (index % 8);
     }
+}
+
+struct DisplayCells<'a>(&'a Cells, usize);
+impl Display for DisplayCells<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for y in 0..self.1 {
+            for x in 0..self.1 {
+                f.write_char(if self.0.get(y * self.1 + x) { 'X' } else { '-' })?;
+            }
+            f.write_char('\n')?;
+        }
+        Ok(())
+    }
+}
+impl Debug for DisplayCells<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self}")
+    }
+}
+
+// The cells algorithm comes from https://github.com/tent/sigil/tree/master/gen, BSD 3-Clause
+fn should_fill(index: usize, hash: &[u8]) -> bool {
+    debug_assert_eq!(hash.len(), 15);
+    (hash[index / 8] >> (8 - ((index % 8) + 1))) & 1 == 1
 }
 
 fn generate_cells(size: usize, hash: &[u8]) -> Cells {
@@ -104,6 +115,12 @@ fn generate_cells(size: usize, hash: &[u8]) -> Cells {
     cells
 }
 
+fn md5(input: &[u8]) -> [u8; 16] {
+    let mut hash = md5::Md5::new();
+    hash.update(input);
+    hash.finalize().into()
+}
+
 /// Represents a Sigil that can be rendered to an image. Use [`Sigil::generate`].
 #[derive(Clone)]
 pub struct Sigil {
@@ -113,30 +130,13 @@ pub struct Sigil {
     cells: Cells,
 }
 
-struct DebugCells<'a>(&'a Cells, usize);
-impl Debug for DebugCells<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for y in 0..self.1 {
-            for x in 0..self.1 {
-                f.write_char(if self.0.get(y * self.1 + x) {
-                    'X'
-                } else {
-                    '-'
-                })?;
-            }
-            f.write_char('\n')?;
-        }
-        Ok(())
-    }
-}
-
 impl Debug for Sigil {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Sigil")
             .field("foreground", &self.foreground)
             .field("background", &self.background)
             .field("rows", &self.rows)
-            .field("cells", &DebugCells(&self.cells, self.rows as usize))
+            .field("cells", &DisplayCells(&self.cells, self.rows as usize))
             .finish()
     }
 }
@@ -195,7 +195,7 @@ impl Sigil {
                 continue;
             }
 
-            let x = (x - padding) / cell_size; 
+            let x = (x - padding) / cell_size;
             let y = (y - padding) / cell_size;
             let cell_index = y * rows + x;
             if self.cells.get(cell_index as usize) {
@@ -206,6 +206,11 @@ impl Sigil {
         }
 
         image
+    }
+
+    #[cfg(test)]
+    fn display(&self) -> DisplayCells<'_> {
+        DisplayCells(&self.cells, self.rows.into())
     }
 }
 
@@ -219,30 +224,32 @@ mod tests {
 
     use super::*;
 
-    fn format_cells(rows: usize, cells: &Cells) -> String {
-        format!("{:?}", DebugCells(cells, rows))
-    }
-
     #[test]
-    fn same_as_sigil() {
-        const ROWS: usize = 5;
+    fn same_as_cupcake() {
+        assert_eq!(
+            Sigil::generate(&Theme::default(), "test")
+                .display()
+                .to_string(),
+            indoc! {"
+                XXXXX
+                -X-X-
+                -XXX-
+                -----
+                XXXXX
+            "}
+        );
 
-        let hash = md5(b"test");
-        assert_eq!(format_cells(ROWS, &generate_cells(ROWS, &hash[1..])), indoc! {"
-            XXXXX
-            -X-X-
-            -XXX-
-            -----
-            XXXXX
-        "});
-
-        let hash = md5(b"56fbc0305cea0414184cb72b");
-        assert_eq!(format_cells(ROWS, &generate_cells(ROWS, &hash[1..])), indoc! {"
-            XX-XX
-            -XXX-
-            -X-X-
-            XXXXX
-            XX-XX
-        "});
+        assert_eq!(
+            Sigil::generate(&Theme::default(), "56fbc0305cea0414184cb72b")
+                .display()
+                .to_string(),
+            indoc! {"
+                XX-XX
+                -XXX-
+                -X-X-
+                XXXXX
+                XX-XX
+            "}
+        );
     }
 }
