@@ -235,27 +235,23 @@ impl Sigil {
         let rows = u32::from(self.rows);
         assert_eq!(size % ((rows + 1) * 2), 0);
 
-        let mut image = RgbImage::new(size, size);
         let cell_size = size / (rows + 1);
         let padding = cell_size / 2;
 
-        for (x, y, px) in image.enumerate_pixels_mut() {
+        RgbImage::from_fn(size, size, |x, y| {
             if x < padding || x >= size - padding || y < padding || y >= size - padding {
-                *px = self.background;
-                continue;
+                return self.background;
             }
 
             let x = (x - padding) / cell_size;
             let y = (y - padding) / cell_size;
             let cell_index = y * rows + x;
             if self.cells.get(cell_index as usize) {
-                *px = self.foreground;
+                self.foreground
             } else {
-                *px = self.background;
+                self.background
             }
-        }
-
-        image
+        })
     }
 
     #[cfg(test)]
