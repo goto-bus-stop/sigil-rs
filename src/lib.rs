@@ -4,7 +4,8 @@
 //!
 //! [Cupcake Sigil]: https://github.com/tent/sigil
 
-use std::fmt::{Debug, Write};
+use std::fmt::Debug;
+use std::fmt::Write;
 
 use md5::Digest as _;
 
@@ -55,19 +56,49 @@ fn should_fill(index: usize, hash: &[u8]) -> bool {
     (hash[index / 8] >> (8 - ((index % 8) + 1))) & 1 == 1
 }
 
-fn generate_cells(size: usize, hash: &[u8]) -> Vec<bool> {
+/// A bit set of up to 256 cells.
+#[derive(Clone)]
+struct Cells {
+    bits: [u8; 32],
+}
+impl Cells {
+    /// Initialise cells to zero.
+    const fn new() -> Self {
+        Self {
+            bits: [0; 32],
+        }
+    }
+
+    const fn capacity(&self) -> usize {
+        self.bits.len() * 8
+    }
+
+    fn get(&self, index: usize) -> bool {
+        debug_assert!(index < self.capacity());
+        let byte = self.bits[index / 8];
+        let mask = 1 << (index % 8);
+        byte & mask != 0
+    }
+
+    fn set(&mut self, index: usize) {
+        debug_assert!(index < self.capacity());
+        self.bits[index / 8] |= 1 << (index % 8);
+    }
+}
+
+fn generate_cells(size: usize, hash: &[u8]) -> Cells {
     debug_assert_eq!(hash.len(), 15);
 
     let cols = (size / 2) + (size % 2);
 
-    let mut cells = vec![false; size * size];
+    let mut cells = Cells::new();
     for i in (0..cols * size).filter(|i| should_fill(*i, hash)) {
         let x = i / size;
         let y = i % size;
 
-        cells[y * size + x] = true;
+        cells.set(y * size + x);
         // Mirror it.
-        cells[y * size + size - 1 - x] = true;
+        cells.set(y * size + size - 1 - x);
     }
 
     cells
@@ -78,16 +109,16 @@ fn generate_cells(size: usize, hash: &[u8]) -> Vec<bool> {
 pub struct Sigil {
     foreground: Rgb,
     background: Rgb,
-    rows: u32,
-    cells: Vec<bool>, // TODO: 256 bits?
+    rows: u16,
+    cells: Cells,
 }
 
-struct DebugCells<'a>(&'a [bool], usize);
+struct DebugCells<'a>(&'a Cells, usize);
 impl Debug for DebugCells<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for y in 0..self.1 {
             for x in 0..self.1 {
-                f.write_char(if self.0[y * self.1 + x] {
+                f.write_char(if self.0.get(y * self.1 + x) {
                     'X'
                 } else {
                     '-'
@@ -126,7 +157,7 @@ impl Sigil {
         Self {
             foreground,
             background,
-            rows: theme.rows.into(),
+            rows: theme.rows,
             cells,
         }
     }
@@ -151,10 +182,11 @@ impl Sigil {
     /// # Panics
     /// Panics if `size` is not a multiple of `(rows + 1) * 2`.
     pub fn to_image(&self, size: u32) -> RgbImage {
-        assert_eq!(size % ((self.rows + 1) * 2), 0);
+        let rows = u32::from(self.rows);
+        assert_eq!(size % ((rows + 1) * 2), 0);
 
         let mut image = RgbImage::new(size, size);
-        let cell_size = size / (self.rows + 1);
+        let cell_size = size / (rows + 1);
         let padding = cell_size / 2;
 
         for (x, y, px) in image.enumerate_pixels_mut() {
@@ -165,8 +197,8 @@ impl Sigil {
 
             let x = (x - padding) / cell_size; 
             let y = (y - padding) / cell_size;
-            let cell_index = y * self.rows + x;
-            if self.cells[cell_index as usize] {
+            let cell_index = y * rows + x;
+            if self.cells.get(cell_index as usize) {
                 *px = self.foreground;
             } else {
                 *px = self.background;
@@ -187,7 +219,7 @@ mod tests {
 
     use super::*;
 
-    fn format_cells(rows: usize, cells: &[bool]) -> String {
+    fn format_cells(rows: usize, cells: &Cells) -> String {
         format!("{:?}", DebugCells(cells, rows))
     }
 
