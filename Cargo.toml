@@ -1,7 +1,13 @@
 [package]
 name = "sigil-rs"
 version = "0.0.0"
+categories = ["graphics", "multimedia::images"]
+description = "small and fast identicon generator"
 edition = "2021"
+keywords = ["identicon"]
+license = "BSD-3-Clause"
+readme = "README.md"
+repository = "https://github.com/goto-bus-stop/sigil-rs"
 
 [dependencies]
 image = { version = "0.25.2", default-features = false, features = ["png"] }

@@ -2,6 +2,31 @@
 //!
 //! sigil is compatible with [Cupcake Sigil].
 //!
+//! # Example
+//! ```no_run
+//! use sigil_rs::Theme;
+//! use sigil_rs::Sigil;
+//!
+//! // The default theme uses 5 rows/columns.
+//! let theme = Theme::default();
+//! let sigil = Sigil::generate(&theme, "username");
+//!
+//! // The width value must be a multiple of `(rows + 1) * 2`.
+//! let image = sigil.to_image(240);
+//! image
+//!     .save("username.png")
+//!     .expect("writing to disk failed");
+//! ```
+//!
+//! # Image formats
+//!
+//! The [`Sigil::to_image`] function method returns an [`RgbImage`].
+//! sigil enables only the PNG encoder in the [`image`] crate. If you want to use a different
+//! format, enable the relevant [`image`] feature in your Cargo.toml:
+//! ```toml
+//! [dependencies]
+//! image = { version = "0.25", default-features = false, features = ["bmp"] }
+//! ```
 //! [Cupcake Sigil]: https://github.com/tent/sigil
 
 use std::fmt::Debug;
@@ -11,8 +36,10 @@ use std::fmt::Write;
 use md5::Digest as _;
 
 pub use image::RgbImage;
+/// Colour type for configuring [Theme::foreground] and [Theme::background].
 pub type Rgb = image::Rgb<u8>;
 
+// Default colours from https://github.com/tent/sigil, BSD 3-Clause
 const DEFAULT_FOREGROUND: [Rgb; 7] = [
     image::Rgb([45, 79, 255]),
     image::Rgb([254, 180, 44]),
@@ -23,10 +50,15 @@ const DEFAULT_FOREGROUND: [Rgb; 7] = [
     image::Rgb([141, 69, 170]),
 ];
 
+/// Configure the way a sigil looks.
 pub struct Theme {
     /// Supported values: 1-15 inclusive.
     pub rows: u16,
+    /// Available foreground colours. Each sigil will use one foreground colour.
+    ///
+    /// Up to 256 different colours are supported.
     pub foreground: Vec<Rgb>,
+    /// Background colour.
     pub background: Rgb,
 }
 impl Default for Theme {
@@ -121,7 +153,15 @@ fn md5(input: &[u8]) -> [u8; 16] {
     hash.finalize().into()
 }
 
-/// Represents a Sigil that can be rendered to an image. Use [`Sigil::generate`].
+/// Represents a Sigil that can be rendered to an image.
+///
+/// ```
+/// use sigil_rs::Sigil;
+/// use sigil_rs::Theme;
+///
+/// let theme = Theme::default();
+/// let sigil = Sigil::generate(&theme, "my input value");
+/// ```
 #[derive(Clone)]
 pub struct Sigil {
     foreground: Rgb,
@@ -145,7 +185,7 @@ impl Sigil {
     /// Create a sigil for a precomputed hash.
     ///
     /// # Panics
-    /// Panics if the theme has an invalid `rows` value.
+    /// Panics if the theme has an invalid [`Theme::rows`] value.
     pub fn from_hash(theme: &Theme, hash: [u8; 16]) -> Self {
         assert!(theme.rows > 0);
         assert!(theme.rows < 16);
@@ -173,8 +213,18 @@ impl Sigil {
     }
 
     /// Swap foreground and background colours.
-    pub fn invert(&mut self) {
+    ///
+    /// ```
+    /// use sigil_rs::Sigil;
+    /// use sigil_rs::Theme;
+    ///
+    /// let theme = Theme::default();
+    /// let sigil = Sigil::generate(&theme, "my input value").invert();
+    /// // Now `sigil` will output a grey foreground and coloured background.
+    /// ```
+    pub fn invert(mut self) -> Self {
         std::mem::swap(&mut self.foreground, &mut self.background);
+        self
     }
 
     /// Create a square image of the given size.
@@ -212,10 +262,6 @@ impl Sigil {
     fn display(&self) -> DisplayCells<'_> {
         DisplayCells(&self.cells, self.rows.into())
     }
-}
-
-pub fn sigil(theme: &Theme, width: u32, input: impl AsRef<[u8]>) -> RgbImage {
-    Sigil::generate(theme, input).to_image(width)
 }
 
 #[cfg(test)]
