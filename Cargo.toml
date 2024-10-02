@@ -1,0 +1,11 @@
+[package]
+name = "sigil-rs"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+image = { version = "0.25.2", default-features = false, features = ["png"] }
+md-5 = "0.10.6"
+
+[dev-dependencies]
+indoc = "2.0.5"
