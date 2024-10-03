@@ -1,4 +1,4 @@
-//! A small and fast identicon generator.
+//! A minimal and fast identicon generator.
 //!
 //! sigil is compatible with [Cupcake Sigil].
 //!
