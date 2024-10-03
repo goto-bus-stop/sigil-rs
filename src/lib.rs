@@ -342,4 +342,23 @@ mod tests {
             "}
         );
     }
+
+    #[test]
+    fn even_rows() {
+        let theme = Theme {
+            rows: 6,
+            ..Default::default()
+        };
+        assert_eq!(
+            Sigil::generate(&theme, "test").display().to_string(),
+            indoc! {"
+                XXXXXX
+                -X--X-
+                --XX--
+                -XXXX-
+                XXXXXX
+                X-XX-X
+            "}
+        );
+    }
 }
