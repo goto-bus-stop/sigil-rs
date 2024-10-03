@@ -3,6 +3,7 @@
 //! sigil is compatible with [Cupcake Sigil].
 //!
 //! # Example
+//!
 //! ```no_run
 //! use sigil_rs::Theme;
 //! use sigil_rs::Sigil;
@@ -27,6 +28,53 @@
 //! [dependencies]
 //! image = { version = "0.25", default-features = false, features = ["bmp"] }
 //! ```
+//!
+//! # HTTP Caching
+//!
+//! A useful pattern for caching the identicon HTTP responses is to split the hashing and rendering.
+//! You can use the hash as an `ETag` header and not render the image at all if the client's
+//! `If-None-Match` header contains the `ETag`.
+//!
+//! For example, using [axum] and the [md-5] crate for hashing:
+//! ```no_run
+//! use axum::extract::Path;
+//! use axum::http::header;
+//! use axum::http::HeaderMap;
+//! use axum::http::StatusCode;
+//! use axum::response::IntoResponse;
+//! use axum::response::Response;
+//! use md5::Digest;
+//! use sigil_rs::Sigil;
+//! use sigil_rs::Theme;
+//!
+//! async fn endpoint_sigil(headers: HeaderMap, path: Path<String>) -> Response {
+//!     let mut hash = md5::Md5::new();
+//!     hash.update(path.as_bytes());
+//!     let hash = hash.finalize();
+//!
+//!     // Md5::finalize can be formatted as a hexadecimal string:
+//!     let etag = format!("{hash:x}");
+//!     let response_headers = [
+//!         (header::ETAG, etag.as_str()),
+//!     ];
+//!     if let Some(if_none_match) = headers
+//!         .get(header::IF_NONE_MATCH)
+//!         .and_then(|value| value.to_str().ok())
+//!     {
+//!         // The client has this image cached: return early
+//!         if if_none_match.contains(&etag) {
+//!             return (StatusCode::NOT_MODIFIED, response_headers).into_response();
+//!         }
+//!     }
+//!
+//!     let sigil = Sigil::from_hash(&Theme::default(), hash.into());
+//!
+//!     todo!()
+//! }
+//! ```
+//!
+//! [axum]: https://docs.rs/axum
+//! [md-5]: https://docs.rs/md-5
 //! [Cupcake Sigil]: https://github.com/tent/sigil
 
 use std::fmt::Debug;
