@@ -11,6 +11,17 @@ sigil is compatible with, and ports some code from, [Cupcake Sigil].
 
 [Cupcake Sigil]: https://github.com/tent/sigil
 
+## Service
+
+A free-to-use instance exists at <https://sigil.u-wave.net>.
+
+Use it as:
+```html
+<img src="https://sigil.u-wave.net/[SOME UNIQUE IDENTIFIER]">
+```
+
+sigil.u-wave.net produces 120×120px images with the default theme.
+
 ## Stability
 
 sigil-rs works today and can be used as is without ever upgrading. I use sigil-rs in several web apps.
