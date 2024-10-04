@@ -1,0 +1,21 @@
+[package]
+name = "sigil-server"
+version = "0.0.0"
+description = "HTTP identicon generator service"
+edition = "2021"
+keywords = ["identicon"]
+repository = "https://github.com/goto-bus-stop/sigil-rs"
+
+[dependencies]
+anyhow = "1.0.89"
+axum = { version = "0.7.6", features = ["macros"] }
+clap = { version = "4.5.19", features = ["derive", "env"] }
+image = { version = "0.25.2", default-features = false }
+md-5 = "0.10.6"
+serde = { version = "1.0.210", features = ["derive"] }
+sigil-rs = { version = "0.1.0", path = "../" }
+tokio = { version = "1.40.0", features = ["net", "rt-multi-thread"] }
+tower = "0.5.1"
+tower-http = { version = "0.6.1", features = ["trace"] }
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
