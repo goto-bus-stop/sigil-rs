@@ -125,7 +125,10 @@ async fn main() -> anyhow::Result<()> {
 
     let listener = TcpListener::bind((args.host, args.port)).await?;
     println!("listening on {}", listener.local_addr()?);
-    axum::serve(listener, router).await?;
+    tokio::select! {
+        _ = tokio::signal::ctrl_c() => {},
+        result = axum::serve(listener, router) => result?,
+    }
 
     Ok(())
 }
