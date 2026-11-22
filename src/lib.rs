@@ -53,7 +53,7 @@
 //!     let hash = hash.finalize();
 //!
 //!     // Md5::finalize can be formatted as a hexadecimal string:
-//!     let etag = format!("{hash:x}");
+//!     let etag = hex::encode(hash);
 //!     let response_headers = [
 //!         (header::ETAG, etag.as_str()),
 //!     ];
