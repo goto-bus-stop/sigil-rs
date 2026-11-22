@@ -67,7 +67,7 @@ async fn handler(
         hash.update(&path);
         hash.finalize()
     };
-    let etag = format!("{hash:x}");
+    let etag = hex::encode(hash);
     if let Some(if_none_match) = headers
         .get(header::IF_NONE_MATCH)
         .and_then(|value| value.to_str().ok())
@@ -119,7 +119,7 @@ async fn main() -> anyhow::Result<()> {
 
     let router = axum::Router::new()
         .route("/favicon.ico", get(|| async { StatusCode::NOT_FOUND }))
-        .route("/:path", get(handler))
+        .route("/{path}", get(handler))
         .route("/", get(handler))
         .layer(TraceLayer::new_for_http());
 
